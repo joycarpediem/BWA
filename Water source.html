@@ -1,0 +1,305 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+ <head>
+ 	  
+   <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.css" />
+   <script src="js/jquery-1.6.4.js"></script>
+    <script src="js/jquery.cycle.all.js"></script>
+   <script src="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js"></script>
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+   <link rel="stylesheet" href="mobile.css" />
+   <link rel="stylesheet" href="dist/MarkerCluster.css" />
+	<link rel="stylesheet" href="dist/MarkerCluster.Default.css" />
+	<link rel="stylesheet" href="community.css" />
+	<script src="dist/leaflet.markercluster-src.js"></script>
+	<script src="http://maps.google.com/maps/api/js?v=3&sensor=false"></script>
+	<script src="layer/tile/Google.js"></script>
+	<script src="bd3.js"></script>
+	<!-- // <script src="html5slider.js"></script> -->
+ </head>
+<style type="text/css">
+    </style>
+  </head>
+  <body>
+   
+  <!--  <div id="sdiv"><h4>Toilet Types</h4><label id="myLabel">12</label><p><input id="slide" name="slider" type="range" min="1" max="12" step="1" value="12" onchange="updateSlider(this.value)"/></p></div> -->
+   <div id="map"></div>
+       <script src="lib/d3.v3.min.js" charset="utf-8"></script>
+      <script type="text/javascript">
+ 
+d3.csv("Water.csv",function(data){
+var origData=data;
+var gjLayer;
+var map = L.map('map').setView([22.806567,89.559689], 8);
+var custom=new L.TileLayer('http://{s}.tile.cloudmade.com/7a400529f688454c8aff470e0edec860/1155/256/{z}/{x}/{y}.png');
+var osm = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+var ggl = new L.Google();
+var ggl2 = new L.Google('TERRAIN');
+	map.addLayer(ggl);
+	map.addControl(new L.Control.Layers( {'OSM':osm, 'Google':ggl, 'Google Terrain':ggl2,'Cloudmade':custom}, {}));
+	gjLayer=L.geoJson(geojson3,{style:style,onEachFeature:onEachFeature});
+	gjLayer.addTo(map);
+ 	map.on('zoomend',update);
+
+// Removes/adds the organge highlight
+ function update(){
+ 	var zoom=map.getZoom();
+ 	if(zoom>=11){
+ 		map.removeLayer(gjLayer);
+ 	}else if(!map.hasLayer(gjLayer)){
+ 		gjLayer.addTo(map);
+ 	}
+
+ }
+
+
+
+function onEachFeature(feature, layer) {
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight,
+        click: zoomToFeature
+    });
+}
+function highlightFeature(e) {
+    var layer = e.target;
+
+    layer.setStyle({
+        weight: 1,
+        color: 'red',
+        dashArray: ''
+        // fillOpacity: 0.7
+    });
+
+    if (!L.Browser.ie && !L.Browser.opera) {
+        layer.bringToFront();
+    }
+    info.update(layer.feature.properties);
+}
+function resetHighlight(e) {
+    gjLayer.resetStyle(e.target);
+    info.update();
+}
+function zoomToFeature(e) {
+    map.fitBounds(e.target.getBounds());
+}
+var info = L.control();
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.update();
+    return this._div;
+};
+
+// method that we will use to update the control based on feature properties passed
+info.update = function (props) {
+    this._div.innerHTML = '<h4>Division</h4>' +  (props ?'<b>' + props.NAME_3 + '</b><br />': 'Hover over a division');
+};
+
+info.addTo(map);
+function style(feature) {
+    return {
+        fillColor: '#ef9400',
+        weight: .5,
+        opacity: 1,
+        color: 'black',
+        dashArray: '2',
+        fillOpacity: 0.4
+    };
+}
+
+
+var markers = L.markerClusterGroup({spiderfyOnMaxZoom: true, showCoverageOnHover: true, zoomToBoundsOnClick: true});
+		var markerList = [];
+		var markerIcon= L.Icon.extend({
+			options:{
+    							
+    							iconSize:     [32, 48] ,// size of the icon
+							    shadowSize:   [41, 41], // size of the shadow
+							    popupAnchor:  [-3, -15] // point from which the popup should open relative to the iconAnchor
+}
+});
+
+var greenIcon=new markerIcon({iconUrl:"green.png"});
+var redIcon=new markerIcon({iconUrl:"red.png"});
+var brownIcon=new markerIcon({iconUrl:"brown.png"});
+var blueIcon=new markerIcon({iconUrl:"blue.png"});
+var yellowIcon=new markerIcon({iconUrl:"yellow.png"});
+var emeraldIcon=new markerIcon({iconUrl:"emerald.png"});
+var orangeIcon=new markerIcon({iconUrl:"orange.png"});
+
+
+function getIcon(type){
+if(type=="PSF/RWHS"){
+	return greenIcon;
+}else if(type=="Unprotected"){
+	return redIcon;
+}else if(type=="Pipe water Supply"){
+	return blueIcon;
+}else if(type=="Purchased Water"){
+	return yellowIcon;
+}else if(type=="Deep Tube Well/DSP"){
+	return brownIcon;
+}else if(type=="Shallow Tube Well"){
+	return emeraldIcon;
+}else if(type=="Ring Well/Dug well"){
+	return orangeIcon;
+}
+
+
+}
+		function populate(value,context) {
+			var data;
+			if(value!=null && context=="Type"){
+				data=filterSource(origData,value);
+			}else if(value!=null && context=="Year"){
+				data=filterYear(origData,value);
+			}else{	
+				data=origData;
+			}
+			 
+			for (var i = 0; i < data.length; i++) {
+				var a = data[i];
+				var title = a[2];
+				var marker = L.marker(L.latLng(data[i].Lat, data[i].Long), { icon: getIcon(data[i].Type) });
+				marker.bindPopup('<div style="padding:0px;font-size:12px;"><table border="0" cellpadding="1" cellspacing="0" style="width: 300px;border-style:outset;border-color:#000000;"><tbody><tr><td><p><b>Para :</b>'+data[i].Para+'</p><p><b>NGO :</b>'+data[i].Organization+'</p><p><b>Unique Code :</b>'+ data[i].UniqueId +'</p><p><b>Distance :</b>'+data[i].Distance+'</p><p><b>Time Req. :</b>'+data[i].Time+'</p><p><a target="_blank" href='+data[i].RSR+'>Know More</a></p></td><td><img  src='+data[i].SrcImage +' style="width: 170px; height:130px"/></td></tr></tbody></table></div>');
+				markers.addLayer(marker);
+				markerList.push(marker);
+				
+			}
+			map.addLayer(markers);
+		}
+
+		populate();
+
+		
+function filter(d,users){
+	var modData=[];
+	for(var i=0;i<=d.length;i++){
+		if (d[i] !=undefined){
+			if(users=="5" && parseInt(d[i].Users)<=5){
+					modData.push(d[i]);
+			}else if(users=="10" && parseInt(d[i].Users)>5 && parseInt(d[i].Users)<=10){
+					modData.push(d[i]);
+			}else if(users=="10+" && parseInt(d[i].Users)>10){
+					modData.push(d[i]);
+			}else if(users=="All" && (d[i].Users)!=null){
+					modData=d;
+					break;
+			}else if(users=="Blanks" && (d[i].Users)==""){
+					modData.push(d[i]);
+		
+			}
+
+
+		}
+
+    }
+
+return modData;
+}
+function filterSource(d,type){
+	var modData=[];
+	for(var i=0;i<=d.length;i++){
+		if (d[i] !=undefined){
+			if(d[i].Type==type){
+					modData.push(d[i]);
+			}else if(type=="All" && (d[i].Type)!=null){
+					modData=d;
+					break;
+			}
+
+		}
+
+    }
+
+return modData;
+}
+function filterYear(d,year){
+	var modData=[];
+	for(var i=0;i<=d.length;i++){
+		if (d[i] !=undefined){
+			if(d[i].Year==year){
+					modData.push(d[i]);
+			}else if(year=="2012"){
+				modData=d;
+				break;
+			}
+
+		}
+
+    }
+
+return modData;
+}
+
+// var legend = L.control({position: 'bottomleft'});
+
+// legend.onAdd = function (map) {
+
+//     var div = L.DomUtil.create('div', 'user count');
+//     div.innerHTML='<h4>Toilet Users</h4><p><input name="RD1" type="radio" id="filter" value="5">0-5</p><p><input name="RD1"type="radio" id="filter" value="10"/>6-10</p><p><input name="RD1"type="radio" id="filter" value="10+"/>10+</p><p><input name="RD1"type="radio" id="filter" value="All"/>All</p><p><input name="RD1"type="radio" id="filter" value="Blanks"/>Blanks</p>';
+   
+//     return div;
+// };
+// legend.addTo(map);
+var slider = L.control({position: 'bottomright'});
+
+slider.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'info legend');
+    div.innerHTML='<h4>Year</h4><label id="myLabel" for="year">All</label><p><input id="slide" name="slider" type="range" min="2012" max="2015" step="1" value="2012" /></p>';
+   
+    return div;
+};
+slider.addTo(map);
+$("#slide").change(function(e){
+	var value=this.value;
+	if(value !="2012"){
+        document.getElementById("myLabel").innerHTML=value;
+    }else{
+    	document.getElementById("myLabel").innerHTML="All";
+    }
+        map.removeLayer(markers);
+		markers=L.markerClusterGroup({spiderfyOnMaxZoom: true, showCoverageOnHover: true, zoomToBoundsOnClick: true});
+		populate(this.value,"Year");
+
+});
+var toiletTypes = L.control({position: 'bottomleft'});
+
+toiletTypes.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'info legend');
+    div.innerHTML='<h4>Water Point Types</h4><img src="green.png" /><input name="T1"type="radio" id="filter" value="PSF/RWHS"/>PSF/RWHS</p><p><img src="brown.png" /><input name="T1"type="radio" id="filter" value="Deep Tube Well/DSP"/>Deep Tube Well/DSP</p><p><img src="emerald.png" /><input name="T1"type="radio" id="filter" value="Shallow Tube Well"/>Shallow Tube Well</p><p><img src="orange.png" /><input name="T1"type="radio" id="filter" value="Ring Well/Dug well"/>Ring Well/Dug well</p><img src="blue.png" /><input name="T1" type="radio" id="filter" value="Pipe water Supply">Pipe water Supply</p><p><img src="yellow.png" /><input name="T1"type="radio" id="filter" value="Purchased Water"/>Purchased Water</p><p><img src="red.png" /><input name="T1"type="radio" id="filter" value="Unprotected"/>Unprotected</p><p><img src="blank.png" /><input name="T1"type="radio" id="filter" value="All"/>All</p>';
+   
+    return div;
+};
+toiletTypes.addTo(map);
+
+// // .change(function(e){
+// // 		var value=e.currentTarget.attributes[1].value;
+// // 		map.removeLayer(markers);
+// // 		markers=L.markerClusterGroup({spiderfyOnMaxZoom: true, showCoverageOnHover: true, zoomToBoundsOnClick: true});
+// // 		populate(value);
+// // 		}
+// );
+// $('input:radio[name=RD1]').change(function(e){
+// 		var value=e.currentTarget.attributes[1].value;
+// 		map.removeLayer(markers);
+// 		markers=L.markerClusterGroup({spiderfyOnMaxZoom: true, showCoverageOnHover: true, zoomToBoundsOnClick: true});
+// 		populate(value);
+// 		}
+// );
+$('input:radio[name=T1]').change(function(e){
+		var value=e.currentTarget.attributes[1].value;
+		map.removeLayer(markers);
+		markers=L.markerClusterGroup({spiderfyOnMaxZoom: true, showCoverageOnHover: true, zoomToBoundsOnClick: true});
+		populate(value,"Type");
+		}
+);
+
+})
+ 	</script>
+ 
+ </body>
+</html>
